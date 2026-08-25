@@ -46,7 +46,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
     mbReadyToInitializate(false), mpSystem(pSys), mpViewer(NULL), bStepByStep(false),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpAtlas(pAtlas), mnLastRelocFrameId(0), time_recently_lost(5.0),
-    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mpLastKeyFrame(static_cast<KeyFrame*>(NULL))
+    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mpLastKeyFrame(static_cast<KeyFrame*>(NULL)),
+    mnLastInitDetections(-1), mnLastInitRawMatches(-1), mnLastInitInlierMatches(-1)
 {
     // Load camera parameters from settings file
     if(settings){
@@ -2447,6 +2448,9 @@ void Tracking::StereoInitialization()
 
 void Tracking::MonocularInitialization()
 {
+    // nano-explorer debug instrumentation: record raw detections on every call,
+    // regardless of which branch below is taken.
+    mnLastInitDetections = (int)mCurrentFrame.mvKeys.size();
 
     if(!mbReadyToInitializate)
     {
@@ -2461,6 +2465,10 @@ void Tracking::MonocularInitialization()
                 mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
 
             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+
+            // New reference frame: no matches/inliers computed against it yet.
+            mnLastInitRawMatches = -1;
+            mnLastInitInlierMatches = -1;
 
             if (mSensor == System::IMU_MONOCULAR)
             {
@@ -2491,6 +2499,11 @@ void Tracking::MonocularInitialization()
         ORBmatcher matcher(0.9,true);
         int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
 
+        // nano-explorer debug instrumentation: raw matches before the RANSAC +
+        // cheirality filtering below prunes them. No inlier count yet this call.
+        mnLastInitRawMatches = nmatches;
+        mnLastInitInlierMatches = -1;
+
         // Check if there are enough correspondences
         if(nmatches<100)
         {
@@ -2511,6 +2524,10 @@ void Tracking::MonocularInitialization()
                     nmatches--;
                 }
             }
+
+            // nano-explorer debug instrumentation: matches remaining after
+            // ReconstructWithTwoViews' internal RANSAC + CheckRT cheirality test.
+            mnLastInitInlierMatches = nmatches;
 
             // Set Frame Poses
             mInitialFrame.SetPose(Sophus::SE3f());
@@ -4063,6 +4080,21 @@ int Tracking::GetNumberDataset()
 int Tracking::GetMatchesInliers()
 {
     return mnMatchesInliers;
+}
+
+int Tracking::GetLastInitDetections()
+{
+    return mnLastInitDetections;
+}
+
+int Tracking::GetLastInitRawMatches()
+{
+    return mnLastInitRawMatches;
+}
+
+int Tracking::GetLastInitInlierMatches()
+{
+    return mnLastInitInlierMatches;
 }
 
 void Tracking::SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, string strFolder)

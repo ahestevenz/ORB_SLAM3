@@ -182,6 +182,14 @@ public:
     bool isLost();
     bool isFinished();
 
+    // nano-explorer debug instrumentation: diagnostics for the most recent
+    // monocular initialization attempt. Call right after TrackMonocular(),
+    // same as GetTrackingState()/GetTrackedMapPoints() above. -1 means that
+    // stage wasn't reached on the last call.
+    int GetLastInitDetections();
+    int GetLastInitRawMatches();
+    int GetLastInitInlierMatches();
+
     void ChangeDataset();
 
     float GetImageScale();
@@ -254,6 +262,12 @@ private:
     std::vector<MapPoint*> mTrackedMapPoints;
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
     std::mutex mMutexState;
+
+    // nano-explorer debug instrumentation (see GetLastInit* above), cached
+    // from Tracking the same way mTrackingState etc. are above.
+    int mLastInitDetections;
+    int mLastInitRawMatches;
+    int mLastInitInlierMatches;
 
     //
     string mStrLoadAtlasFromFile;
