@@ -30,9 +30,14 @@ endif()
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
-find_package(OpenCV 4.4)
+# nano-explorer: lowered from the upstream 4.4 floor to match JetPack 4.6.1's
+# stock OpenCV (4.1.1) on the Jetson Nano. No code here is actually gated on a
+# 4.4-only API (no CV_VERSION/CV_MAJOR_VERSION branching anywhere in src/ or
+# include/) — 4.4 was just whatever upstream happened to build against, and
+# UZ-SLAMLab/ORB_SLAM3#456 confirms 4.2.0 already compiles and runs fine.
+find_package(OpenCV 4.1.1)
    if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 4.4 not found.")
+      message(FATAL_ERROR "OpenCV > 4.1.1 not found.")
    endif()
 
 MESSAGE("OPENCV VERSION:")
